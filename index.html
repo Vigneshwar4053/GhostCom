@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>End-to-End AES Chat Demo</title>
+</head>
+<body>
+  <h2>Open DevTools Console</h2>
+  <script>
+    // Helper: ArrayBuffer <-> base64
+    function ab2b64(buf) {
+      return btoa(String.fromCharCode(...new Uint8Array(buf)));
+    }
+    function b642ab(b64) {
+      return Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+    }
+
+    // Derive AES key from password and room code using PBKDF2
+    async function deriveKey(password, roomCode) {
+      const enc = new TextEncoder();
+      const salt = enc.encode(roomCode);
+      const keyMaterial = await window.crypto.subtle.importKey(
+        "raw", enc.encode(password), { name: "PBKDF2" }, false, ["deriveKey"]
+      );
+      return window.crypto.subtle.deriveKey(
+        {
+          name: "PBKDF2",
+          salt,
+          iterations: 100000,
+          hash: "SHA-256"
+        },
+        keyMaterial,
+        { name: "AES-GCM", length: 256 },
+        false,
+        ["encrypt", "decrypt"]
+      );
+    }
+
+    // Encrypt a message
+    async function encryptMessageAES(message, key) {
+      const enc = new TextEncoder();
+      const iv = window.crypto.getRandomValues(new Uint8Array(12));
+      const ciphertext = await window.crypto.subtle.encrypt(
+        { name: "AES-GCM", iv },
+        key,
+        enc.encode(message)
+      );
+      return {
+        iv: ab2b64(iv),
+        ciphertext: ab2b64(ciphertext)
+      };
+    }
+
+    // Decrypt a message
+    async function decryptMessageAES({ ciphertext, iv }, key) {
+      const dec = new TextDecoder();
+      try {
+        const pt = await window.crypto.subtle.decrypt(
+          { name: "AES-GCM", iv: b642ab(iv) },
+          key,
+          b642ab(ciphertext)
+        );
+        return dec.decode(pt);
+      } catch (e) {
+        console.error("Decryption failed:", e);
+        return "[Decryption Error]";
+      }
+    }
+
+    // Simulate sender -> receiver flow
+    async function simulateChatFlow() {
+      const password = "secret123";
+      const roomCode = "roomABC";
+
+      const senderKey = await deriveKey(password, roomCode);
+      const receiverKey = await deriveKey(password, roomCode);
+
+      const message = "Hello! This.";
+      console.log("Original Message:", message);
+
+      // Encrypt
+      const encrypted = await encryptMessageAES(message, senderKey);
+      console.log("Encrypted:", encrypted);
+
+      // Simulate sending encrypted over network...
+
+      // Decrypt on receiver side
+      const decrypted = await decryptMessageAES(encrypted, receiverKey);
+      console.log("Decrypted Message:", decrypted);
+    }
+
+    simulateChatFlow();
+  </script>
+</body>
+</html>
