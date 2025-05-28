@@ -13,14 +13,14 @@ import {
   Hash,
   Clock,
   Send,
+  Menu,
+  X,
 } from "lucide-react";
 
 // --- CONFIG ---
 // Backend endpoints
 const BACKEND_URL = "https://ghostcom.onrender.com";
 const WS_URL = "wss://ghostcom.onrender.com/ws";
-
-
 
 // --- AES-GCM Encryption Utilities ---
 const generateKeyFromString = async (password) => {
@@ -129,6 +129,10 @@ const GhostCom = () => {
   const [showCreateRoom, setShowCreateRoom] = useState(false);
   const [showJoinRoom, setShowJoinRoom] = useState(false);
 
+  // Mobile UI
+  const [showSidebar, setShowSidebar] = useState(false);
+  const [showRoomInfo, setShowRoomInfo] = useState(false);
+
   // Activity & Auto-logout
   const [lastActivity, setLastActivity] = useState(Date.now());
   const [timeLeft, setTimeLeft] = useState(180); // 3 mins
@@ -192,6 +196,7 @@ const GhostCom = () => {
       setShowCreateRoom(false);
       setNewRoomCode("");
       resetActivity();
+      setShowSidebar(false); // Close sidebar on mobile after creating room
     } else {
       alert("Room code already exists. Try another.");
     }
@@ -222,6 +227,7 @@ const GhostCom = () => {
       setShowJoinRoom(false);
       setJoinRoomCode("");
       resetActivity();
+      setShowSidebar(false); // Close sidebar on mobile after joining room
     } else {
       alert("Room not found or terminated.");
     }
@@ -546,22 +552,31 @@ const GhostCom = () => {
   return (
     <div className="min-h-screen bg-black text-green-400 font-mono flex flex-col">
       {/* Header */}
-      <div className="border-b border-green-800 bg-black/90 backdrop-blur-sm sticky top-0 z-10">
+      <div className="border-b border-green-800 bg-black/90 backdrop-blur-sm sticky top-0 z-20">
         <div className="flex items-center justify-between p-4">
+          {/* Mobile menu button */}
+          <button
+            onClick={() => setShowSidebar(!showSidebar)}
+            className="md:hidden p-2 rounded border border-green-800 hover:bg-green-900/20"
+          >
+            {showSidebar ? <X size={20} /> : <Menu size={20} />}
+          </button>
+          
           <div className="flex items-center space-x-4">
             <div className="flex items-center">
               <Terminal className="w-6 h-6 mr-2 text-green-400" />
-              <h1 className="text-xl font-bold">GHOSTCOM</h1>
+              <h1 className="text-xl font-bold hidden sm:block">GHOSTCOM</h1>
             </div>
-            <div className="flex items-center text-sm text-green-600">
+            <div className="hidden md:flex items-center text-sm text-green-600">
               <Shield className="w-4 h-4 mr-1" />
               <span>Encrypted</span>
             </div>
           </div>
+          
           <div className="flex items-center space-x-4">
-            {/* Session Timer */}
+            {/* Session Timer - hidden on small screens */}
             <div
-              className={`flex items-center text-sm ${
+              className={`hidden sm:flex items-center text-sm ${
                 timeLeft <= 30
                   ? "text-red-400 animate-pulse"
                   : "text-green-600"
@@ -572,10 +587,15 @@ const GhostCom = () => {
                 {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, "0")}
               </span>
             </div>
-            <div className="flex items-center text-sm text-green-600">
-              <Users className="w-4 h-4 mr-1" />
-              <span>online</span>
-            </div>
+            
+            {/* Room info button for mobile */}
+            <button
+              onClick={() => setShowRoomInfo(!showRoomInfo)}
+              className="md:hidden p-2 rounded border border-green-800 hover:bg-green-900/20"
+            >
+              <Users size={20} />
+            </button>
+            
             <button
               onClick={handleLogout}
               className="text-red-400 hover:text-red-300 p-2 rounded border border-red-800 hover:bg-red-900/20"
@@ -584,31 +604,55 @@ const GhostCom = () => {
             </button>
           </div>
         </div>
+        
+        {/* Mobile room info */}
+        {showRoomInfo && (
+          <div className="md:hidden p-4 border-t border-green-800 bg-black/90">
+            <div className="flex justify-between items-center">
+              <h2 className="text-lg font-bold">
+                {rooms[currentRoom]?.name}
+              </h2>
+              <div className="text-sm text-green-600 flex items-center">
+                <Shield className="w-4 h-4 mr-1" />
+                <span>{rooms[currentRoom]?.members.size} online</span>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
+      
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar */}
-        <div className="w-64 bg-black border-r border-green-800 flex flex-col">
+        <div className={`${showSidebar ? 'block' : 'hidden'} md:block absolute md:relative z-10 w-64 h-full bg-black border-r border-green-800 flex flex-col`}>
           <div className="p-4 border-b border-green-800">
             <div className="text-sm text-green-600 mb-2">Logged in as:</div>
             <div className="text-green-400 font-bold">{username}</div>
           </div>
+          
           {/* Room Actions */}
           <div className="p-4 border-b border-green-800 space-y-2">
             <button
-              onClick={() => setShowCreateRoom(true)}
+              onClick={() => {
+                setShowCreateRoom(true);
+                setShowSidebar(false);
+              }}
               className="w-full py-2 px-3 bg-green-900/20 border border-green-700 rounded text-sm hover:bg-green-900/40 flex items-center"
             >
               <Plus className="w-4 h-4 mr-2" />
               Create Room
             </button>
             <button
-              onClick={() => setShowJoinRoom(true)}
+              onClick={() => {
+                setShowJoinRoom(true);
+                setShowSidebar(false);
+              }}
               className="w-full py-2 px-3 bg-green-900/20 border border-green-700 rounded text-sm hover:bg-green-900/40 flex items-center"
             >
               <Hash className="w-4 h-4 mr-2" />
               Join Room
             </button>
           </div>
+          
           {/* Room List */}
           <div className="flex-1 overflow-y-auto">
             <div className="p-4">
@@ -621,6 +665,7 @@ const GhostCom = () => {
                   onClick={() => {
                     setCurrentRoom(roomId);
                     resetActivity();
+                    setShowSidebar(false);
                   }}
                   className={`w-full text-left p-3 rounded mb-2 transition-colors ${
                     currentRoom === roomId
@@ -645,10 +690,11 @@ const GhostCom = () => {
             </div>
           </div>
         </div>
+        
         {/* Chat Area */}
         <div className="flex-1 flex flex-col">
-          {/* Chat Header */}
-          <div className="p-4 border-b border-green-800 bg-black/50">
+          {/* Chat Header - Desktop */}
+          <div className="hidden md:block p-4 border-b border-green-800 bg-black/50">
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-lg font-bold">
@@ -663,6 +709,7 @@ const GhostCom = () => {
               <Shield className="w-5 h-5 text-green-400" />
             </div>
           </div>
+          
           {/* Messages */}
           <div
             ref={messagesRef}
@@ -695,6 +742,7 @@ const GhostCom = () => {
               </div>
             ))}
           </div>
+          
           {/* Message Input */}
           <div className="p-4 border-t border-green-800 bg-black/50">
             <div className="flex space-x-2">
@@ -717,10 +765,11 @@ const GhostCom = () => {
           </div>
         </div>
       </div>
+      
       {/* Auto-logout Warning */}
       {showLogoutWarning && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
-          <div className="bg-red-900/90 border-2 border-red-500 p-6 rounded max-w-md">
+          <div className="bg-red-900/90 border-2 border-red-500 p-6 rounded max-w-md mx-4">
             <div className="text-center">
               <AlertTriangle className="w-12 h-12 text-red-400 mx-auto mb-4" />
               <h3 className="text-lg font-bold text-red-300 mb-2">
@@ -748,6 +797,7 @@ const GhostCom = () => {
           </div>
         </div>
       )}
+      
       {/* Create Room Modal */}
       {showCreateRoom && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
@@ -780,6 +830,7 @@ const GhostCom = () => {
           </div>
         </div>
       )}
+      
       {/* Join Room Modal */}
       {showJoinRoom && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
