@@ -17,8 +17,10 @@ import {
 
 // --- CONFIG ---
 // Backend endpoints
-const BACKEND_URL = "http://localhost:8000"; // Change to your backend host if deployed
-const WS_URL = "ws://localhost:8000/ws";
+const BACKEND_URL = "https://ghostcom.onrender.com";
+const WS_URL = "wss://ghostcom.onrender.com/ws";
+
+
 
 // --- AES-GCM Encryption Utilities ---
 const generateKeyFromString = async (password) => {
